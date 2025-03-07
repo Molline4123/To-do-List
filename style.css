@@ -129,8 +129,8 @@ body.dark li button {
 }
 
 #themeToggle {
-  background: none;
-  border: none;
+  background: black;
+  border: 1pc;
   font-size: 1.2em;
   cursor: pointer;
   transition: transform 0.3s;
