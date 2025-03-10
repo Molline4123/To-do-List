@@ -1,11 +1,14 @@
+/* Light Mode (Default) */
 body {
   font-family: Arial, sans-serif;
   background-color: #f4f4f4;
+  color: #333;
   display: flex;
   justify-content: center;
   align-items: center;
   height: 100vh;
   margin: 0;
+  transition: background-color 0.3s, color 0.3s;
 }
 
 .container {
@@ -13,7 +16,8 @@ body {
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-  width: 600px;
+  width: 400px;
+  transition: background-color 0.3s, color 0.3s;
 }
 
 h1 {
@@ -88,6 +92,8 @@ li button:hover {
     transform: translateY(0);
   }
 }
+
+/* Dark Mode */
 body.dark {
   background-color: #333;
   color: #f4f4f4;
@@ -129,8 +135,8 @@ body.dark li button {
 }
 
 #themeToggle {
-  background: black;
-  border: 1pc;
+  background: none;
+  border: none;
   font-size: 1.2em;
   cursor: pointer;
   transition: transform 0.3s;

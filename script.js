@@ -1,10 +1,19 @@
+// Select DOM elements
 const taskInput = document.getElementById('taskInput');
-const addTaskBtn = document.getElementById('addTaskBtn');
-const taskList = document.getElementById('taskList');
-const searchInput = document.getElementById('searchInput');
-const dueDateInput = document.getElementById('dueDateInput');
 const categoryInput = document.getElementById('categoryInput');
+const dueDateInput = document.getElementById('dueDateInput');
+const addTaskBtn = document.getElementById('addTaskBtn');
+const searchInput = document.getElementById('searchInput');
+const taskList = document.getElementById('taskList');
+const themeToggle = document.getElementById('themeToggle');
 
+// Load tasks from localStorage
+function loadTasks() {
+  const tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+  tasks.forEach(task => addTask(task));
+}
+
+// Add a new task
 addTaskBtn.addEventListener('click', () => {
   const taskText = taskInput.value.trim();
   const category = categoryInput.value;
@@ -25,6 +34,7 @@ addTaskBtn.addEventListener('click', () => {
   }
 });
 
+// Create a task element
 function addTask(task) {
   const li = document.createElement('li');
   li.setAttribute('data-id', task.id);
@@ -60,6 +70,7 @@ function addTask(task) {
   taskList.appendChild(li);
 }
 
+// Save tasks to localStorage
 function saveTasks() {
   const tasks = [];
   document.querySelectorAll('#taskList li').forEach(li => {
@@ -75,12 +86,7 @@ function saveTasks() {
   localStorage.setItem('tasks', JSON.stringify(tasks));
 }
 
-function loadTasks() {
-  const tasks = JSON.parse(localStorage.getItem('tasks')) || [];
-  tasks.forEach(task => addTask(task));
-}
-
-loadTasks();
+// Search and filter tasks
 searchInput.addEventListener('input', () => {
   const query = searchInput.value.toLowerCase();
   document.querySelectorAll('#taskList li').forEach(li => {
@@ -92,10 +98,8 @@ searchInput.addEventListener('input', () => {
     }
   });
 });
-// Select the theme toggle button
-const themeToggle = document.getElementById('themeToggle');
 
-// Check localStorage for saved theme preference
+// Light/Dark Mode Toggle
 const savedTheme = localStorage.getItem('theme');
 if (savedTheme === 'dark') {
   document.body.classList.add('dark');
@@ -105,7 +109,6 @@ if (savedTheme === 'dark') {
   themeToggle.textContent = '🌙 Dark Mode';
 }
 
-// Toggle between light and dark modes
 themeToggle.addEventListener('click', () => {
   document.body.classList.toggle('dark');
   if (document.body.classList.contains('dark')) {
@@ -116,3 +119,6 @@ themeToggle.addEventListener('click', () => {
     localStorage.setItem('theme', 'light');
   }
 });
+
+// Load tasks when the page loads
+loadTasks();
