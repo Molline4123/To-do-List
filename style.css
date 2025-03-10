@@ -64,6 +64,10 @@ li {
   animation: fadeIn 0.5s ease-in-out;
 }
 
+.task-details {
+  flex: 1;
+}
+
 li.completed {
   text-decoration: line-through;
   color: #888;
@@ -153,9 +157,14 @@ body.dark li button {
   padding: 5px 10px;
   border-radius: 4px;
   cursor: pointer;
-  margin-right: 5px;
+  
 }
 
 .edit-btn:hover {
   background: #e0a800;
+}
+
+.button-container {
+  display: flex;
+  gap: 10px; /* Increase spacing between buttons */
 }
