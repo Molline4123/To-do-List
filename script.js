@@ -49,6 +49,12 @@ function addTask(task) {
     <small>Due: ${task.dueDate || 'No due date'}</small>
   `;
 
+  // Edit button
+  const editBtn = document.createElement('button');
+  editBtn.textContent = 'Edit';
+  editBtn.classList.add('edit-btn');
+  editBtn.addEventListener('click', () => editTask(li, task));
+
   // Delete button
   const deleteBtn = document.createElement('button');
   deleteBtn.textContent = 'Delete';
@@ -66,6 +72,7 @@ function addTask(task) {
 
   // Append elements
   li.appendChild(taskDetails);
+  li.appendChild(deleteBtn);
   li.appendChild(deleteBtn);
   taskList.appendChild(li);
 }
@@ -119,6 +126,60 @@ themeToggle.addEventListener('click', () => {
     localStorage.setItem('theme', 'light');
   }
 });
+
+function editTask(li, task) {
+  // Populate input fields with task details
+  taskInput.value = task.text;
+  categoryInput.value = task.category;
+  dueDateInput.value = task.dueDate;
+
+  // Change the "Add Task" button to "Save Changes"
+  addTaskBtn.textContent = 'Save Changes';
+
+  // Remove the old task when saving changes
+  addTaskBtn.onclick = () => {
+    const updatedTask = {
+      id: task.id,
+      text: taskInput.value.trim(),
+      category: categoryInput.value,
+      dueDate: dueDateInput.value,
+      completed: task.completed
+    };
+
+    if (updatedTask.text !== '') {
+      taskList.removeChild(li);
+      addTask(updatedTask);
+      saveTasks();
+      resetForm();
+    }
+  };
+}
+
+// Reset the form after editing
+function resetForm() {
+  taskInput.value = '';
+  categoryInput.value = 'Personal';
+  dueDateInput.value = '';
+  addTaskBtn.textContent = 'Add Task';
+  addTaskBtn.onclick = () => {
+    const taskText = taskInput.value.trim();
+    const category = categoryInput.value;
+    const dueDate = dueDateInput.value;
+
+    if (taskText !== '') {
+      const task = {
+        id: Date.now(),
+        text: taskText,
+        category: category,
+        dueDate: dueDate,
+        completed: false
+      };
+      addTask(task);
+      saveTasks();
+      resetForm();
+    }
+  };
+}
 
 // Load tasks when the page loads
 loadTasks();

@@ -145,3 +145,17 @@ body.dark li button {
 #themeToggle:hover {
   transform: scale(1.1);
 }
+
+.edit-btn {
+  background: #ffc107;
+  border: none;
+  color: white;
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-right: 5px;
+}
+
+.edit-btn:hover {
+  background: #e0a800;
+}
