@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Super To-Do List App</title>
+  <title>Super To-Do List</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -12,18 +12,45 @@
       <h1>Super To-Do List</h1>
       <button id="themeToggle">🌙 Dark Mode</button>
     </div>
+    
     <div class="input-group">
-      <input type="text" id="taskInput" placeholder="Add a new task...">
+      <input type="text" id="taskInput" placeholder="Add a new task..." autofocus>
       <select id="categoryInput">
         <option value="Personal">Personal</option>
         <option value="Work">Work</option>
         <option value="Shopping">Shopping</option>
       </select>
+      <select id="priorityInput">
+        <option value="Low">Low</option>
+        <option value="Medium">Medium</option>
+        <option value="High">High</option>
+      </select>
       <input type="date" id="dueDateInput">
       <button id="addTaskBtn">Add Task</button>
     </div>
-    <input type="text" id="searchInput" placeholder="Search tasks...">
+    
+    <div class="filter-group">
+      <input type="text" id="searchInput" placeholder="Search tasks...">
+      <select id="filterCategory">
+        <option value="All">All Categories</option>
+        <option value="Personal">Personal</option>
+        <option value="Work">Work</option>
+        <option value="Shopping">Shopping</option>
+      </select>
+      <select id="filterPriority">
+        <option value="All">All Priorities</option>
+        <option value="High">High</option>
+        <option value="Medium">Medium</option>
+        <option value="Low">Low</option>
+      </select>
+    </div>
+    
     <ul id="taskList"></ul>
+    
+    <div class="task-footer">
+      <div id="taskCount">0 of 0 tasks completed</div>
+      <button id="clearCompletedBtn">Clear Completed</button>
+    </div>
   </div>
   <script src="script.js"></script>
 </body>

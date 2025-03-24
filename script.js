@@ -1,183 +1,313 @@
-// Select DOM elements
-const taskInput = document.getElementById('taskInput');
-const categoryInput = document.getElementById('categoryInput');
-const dueDateInput = document.getElementById('dueDateInput');
-const addTaskBtn = document.getElementById('addTaskBtn');
-const searchInput = document.getElementById('searchInput');
-const taskList = document.getElementById('taskList');
-const themeToggle = document.getElementById('themeToggle');
+// DOM Elements
+const elements = {
+  taskInput: document.getElementById('taskInput'),
+  categoryInput: document.getElementById('categoryInput'),
+  priorityInput: document.getElementById('priorityInput'),
+  dueDateInput: document.getElementById('dueDateInput'),
+  addTaskBtn: document.getElementById('addTaskBtn'),
+  searchInput: document.getElementById('searchInput'),
+  filterCategory: document.getElementById('filterCategory'),
+  filterPriority: document.getElementById('filterPriority'),
+  taskList: document.getElementById('taskList'),
+  themeToggle: document.getElementById('themeToggle'),
+  taskCount: document.getElementById('taskCount'),
+  clearCompletedBtn: document.getElementById('clearCompletedBtn')
+};
 
-// Load tasks from localStorage
-function loadTasks() {
-  const tasks = JSON.parse(localStorage.getItem('tasks')) || [];
-  tasks.forEach(task => addTask(task));
+// State
+let state = {
+  tasks: [],
+  totalTasks: 0,
+  completedTasks: 0,
+  draggedItem: null
+};
+
+// Initialize
+function init() {
+  loadTasks();
+  setupEventListeners();
+  checkDueDates();
 }
 
-// Add a new task
-addTaskBtn.addEventListener('click', () => {
-  const taskText = taskInput.value.trim();
-  const category = categoryInput.value;
-  const dueDate = dueDateInput.value;
+// Event Listeners
+function setupEventListeners() {
+  elements.addTaskBtn.addEventListener('click', addNewTask);
+  elements.clearCompletedBtn.addEventListener('click', clearCompletedTasks);
+  elements.searchInput.addEventListener('input', filterTasks);
+  elements.filterCategory.addEventListener('change', filterTasks);
+  elements.filterPriority.addEventListener('change', filterTasks);
+  elements.themeToggle.addEventListener('click', toggleTheme);
+  elements.taskInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') addNewTask();
+  });
+}
 
-  if (taskText !== '') {
-    const task = {
-      id: Date.now(), // Unique ID for each task
-      text: taskText,
-      category: category,
-      dueDate: dueDate,
-      completed: false
-    };
-    addTask(task);
-    saveTasks();
-    taskInput.value = '';
-    dueDateInput.value = '';
-  }
-});
+// Task Functions
+function addNewTask() {
+  const taskText = elements.taskInput.value.trim();
+  if (!taskText) return;
 
-// Create a task element
-function addTask(task) {
+  const newTask = {
+    id: Date.now(),
+    text: taskText,
+    category: elements.categoryInput.value,
+    priority: elements.priorityInput.value,
+    dueDate: elements.dueDateInput.value,
+    completed: false,
+    createdAt: new Date().toISOString()
+  };
+
+  addTaskToDOM(newTask);
+  state.tasks.push(newTask);
+  state.totalTasks++;
+  updateTaskCount();
+  saveTasks();
+  resetForm();
+}
+
+function addTaskToDOM(task) {
   const li = document.createElement('li');
   li.setAttribute('data-id', task.id);
+  li.setAttribute('data-priority', task.priority);
+  li.setAttribute('draggable', true);
 
-  // Task text and details
-  const taskDetails = document.createElement('div');
-  taskDetails.className = 'task-details';
-  taskDetails.innerHTML = `
-    <strong>${task.text}</strong>
-    <br>
-    <small>Category: ${task.category}</small>
-    <br>
-    <small>Due: ${task.dueDate || 'No due date'}</small>
+  if (task.completed) li.classList.add('completed');
+  if (isOverdue(task.dueDate) && !task.completed) li.classList.add('overdue');
+
+  li.innerHTML = `
+    <div class="task-details">
+      <strong>${task.text}</strong>
+      <small>Category: ${task.category}</small>
+      <small>Due: ${formatDueDate(task.dueDate)}</small>
+      <small>Priority: ${task.priority}</small>
+    </div>
+    <div class="button-container">
+      <button class="edit-btn">Edit</button>
+      <button class="delete-btn">Delete</button>
+    </div>
   `;
 
-  // Edit button
-  const editBtn = document.createElement('button');
-  editBtn.textContent = 'Edit';
-  editBtn.classList.add('edit-btn');
-  editBtn.addEventListener('click', () => editTask(li, task));
-
-  // Delete button
-  const deleteBtn = document.createElement('button');
-  deleteBtn.textContent = 'Delete';
-  deleteBtn.addEventListener('click', () => {
-    taskList.removeChild(li);
-    saveTasks();
+  // Event listeners for dynamically created elements
+  li.querySelector('.edit-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    editTask(li, task);
   });
 
-  // Complete task
-  li.addEventListener('click', () => {
-    li.classList.toggle('completed');
-    task.completed = !task.completed;
-    saveTasks();
+  li.querySelector('.delete-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    deleteTask(li, task.id);
   });
 
-  // Append elements
-  li.appendChild(taskDetails);
-  li.appendChild(editBtn);
-  li.appendChild(deleteBtn);
-  taskList.appendChild(li);
+  li.addEventListener('click', () => toggleTaskCompletion(li, task));
+  li.addEventListener('dragstart', handleDragStart);
+  li.addEventListener('dragover', handleDragOver);
+  li.addEventListener('drop', handleDrop);
+  li.addEventListener('dragend', handleDragEnd);
+
+  elements.taskList.appendChild(li);
 }
 
-// Edit a task
 function editTask(li, task) {
-  taskInput.value = task.text;
-  categoryInput.value = task.category;
-  dueDateInput.value = task.dueDate;
+  elements.taskInput.value = task.text;
+  elements.categoryInput.value = task.category;
+  elements.priorityInput.value = task.priority;
+  elements.dueDateInput.value = task.dueDate;
 
-  addTaskBtn.textContent = 'Save Changes';
-  addTaskBtn.onclick = () => {
+  elements.addTaskBtn.textContent = 'Save Changes';
+  const originalClick = elements.addTaskBtn.onclick;
+  
+  elements.addTaskBtn.onclick = () => {
     const updatedTask = {
-      id: task.id,
-      text: taskInput.value.trim(),
-      category: categoryInput.value,
-      dueDate: dueDateInput.value,
-      completed: task.completed
+      ...task,
+      text: elements.taskInput.value.trim(),
+      category: elements.categoryInput.value,
+      priority: elements.priorityInput.value,
+      dueDate: elements.dueDateInput.value
     };
 
-    if (updatedTask.text !== '') {
-      taskList.removeChild(li);
-      addTask(updatedTask);
+    if (updatedTask.text) {
+      li.remove();
+      addTaskToDOM(updatedTask);
+      state.tasks = state.tasks.map(t => t.id === task.id ? updatedTask : t);
       saveTasks();
       resetForm();
+      elements.addTaskBtn.onclick = originalClick;
     }
   };
 }
 
-// Reset the form
-function resetForm() {
-  taskInput.value = '';
-  categoryInput.value = 'Personal';
-  dueDateInput.value = '';
-  addTaskBtn.textContent = 'Add Task';
-  addTaskBtn.onclick = () => {
-    const taskText = taskInput.value.trim();
-    const category = categoryInput.value;
-    const dueDate = dueDateInput.value;
-
-    if (taskText !== '') {
-      const task = {
-        id: Date.now(),
-        text: taskText,
-        category: category,
-        dueDate: dueDate,
-        completed: false
-      };
-      addTask(task);
-      saveTasks();
-      resetForm();
-    }
-  };
+function deleteTask(li, taskId) {
+  if (li.classList.contains('completed')) state.completedTasks--;
+  li.remove();
+  state.tasks = state.tasks.filter(task => task.id !== taskId);
+  state.totalTasks--;
+  updateTaskCount();
+  saveTasks();
 }
 
-// Save tasks to localStorage
-function saveTasks() {
-  const tasks = [];
-  document.querySelectorAll('#taskList li').forEach(li => {
-    const task = {
-      id: li.getAttribute('data-id'),
-      text: li.querySelector('strong').textContent,
-      category: li.querySelector('small').textContent.replace('Category: ', ''),
-      dueDate: li.querySelectorAll('small')[1].textContent.replace('Due: ', ''),
-      completed: li.classList.contains('completed')
-    };
-    tasks.push(task);
-  });
-  localStorage.setItem('tasks', JSON.stringify(tasks));
-}
-
-// Search and filter tasks
-searchInput.addEventListener('input', () => {
-  const query = searchInput.value.toLowerCase();
-  document.querySelectorAll('#taskList li').forEach(li => {
-    const taskText = li.querySelector('strong').textContent.toLowerCase();
-    if (taskText.includes(query)) {
-      li.style.display = 'flex';
-    } else {
-      li.style.display = 'none';
-    }
-  });
-});
-
-// Light/Dark Mode Toggle
-const savedTheme = localStorage.getItem('theme');
-if (savedTheme === 'dark') {
-  document.body.classList.add('dark');
-  themeToggle.textContent = '☀️ Light Mode';
-} else {
-  document.body.classList.remove('dark');
-  themeToggle.textContent = '🌙 Dark Mode';
-}
-
-themeToggle.addEventListener('click', () => {
-  document.body.classList.toggle('dark');
-  if (document.body.classList.contains('dark')) {
-    themeToggle.textContent = '☀️ Light Mode';
-    localStorage.setItem('theme', 'dark');
+function toggleTaskCompletion(li, task) {
+  li.classList.toggle('completed');
+  task.completed = !task.completed;
+  
+  if (task.completed) {
+    state.completedTasks++;
+    li.classList.remove('overdue');
   } else {
-    themeToggle.textContent = '🌙 Dark Mode';
-    localStorage.setItem('theme', 'light');
+    state.completedTasks--;
+    if (isOverdue(task.dueDate)) li.classList.add('overdue');
   }
-});
+  
+  updateTaskCount();
+  saveTasks();
+}
 
-// Load tasks when the page loads
-loadTasks();
+function clearCompletedTasks() {
+  const completedItems = elements.taskList.querySelectorAll('.completed');
+  completedItems.forEach(item => {
+    const taskId = parseInt(item.getAttribute('data-id'));
+    state.tasks = state.tasks.filter(task => task.id !== taskId);
+    item.remove();
+  });
+  
+  state.totalTasks -= completedItems.length;
+  state.completedTasks = 0;
+  updateTaskCount();
+  saveTasks();
+}
+
+// Filter/Sort Functions
+function filterTasks() {
+  const searchQuery = elements.searchInput.value.toLowerCase();
+  const categoryFilter = elements.filterCategory.value;
+  const priorityFilter = elements.filterPriority.value;
+
+  elements.taskList.querySelectorAll('li').forEach(li => {
+    const text = li.querySelector('strong').textContent.toLowerCase();
+    const category = li.querySelector('small').textContent.split(': ')[1];
+    const priority = li.getAttribute('data-priority');
+
+    const matchesSearch = text.includes(searchQuery);
+    const matchesCategory = categoryFilter === 'All' || category === categoryFilter;
+    const matchesPriority = priorityFilter === 'All' || priority === priorityFilter;
+
+    li.style.display = matchesSearch && matchesCategory && matchesPriority ? 'flex' : 'none';
+  });
+}
+
+// Drag and Drop
+function handleDragStart(e) {
+  state.draggedItem = this;
+  e.dataTransfer.effectAllowed = 'move';
+  this.classList.add('dragging');
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+  const afterElement = getDragAfterElement(elements.taskList, e.clientY);
+  const currentItem = document.querySelector('.dragging');
+  
+  if (afterElement == null) {
+    elements.taskList.appendChild(currentItem);
+  } else {
+    elements.taskList.insertBefore(currentItem, afterElement);
+  }
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  this.classList.remove('dragging');
+  saveTasks();
+}
+
+function handleDragEnd() {
+  this.classList.remove('dragging');
+}
+
+function getDragAfterElement(container, y) {
+  const draggableElements = [...container.querySelectorAll('li:not(.dragging)')];
+  
+  return draggableElements.reduce((closest, child) => {
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+    return offset < 0 && offset > closest.offset 
+      ? { offset: offset, element: child } 
+      : closest;
+  }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+// Due Date Functions
+function isOverdue(dueDate) {
+  if (!dueDate) return false;
+  return new Date(dueDate) < new Date();
+}
+
+function formatDueDate(dateString) {
+  if (!dateString) return 'No due date';
+  return new Date(dateString).toLocaleDateString();
+}
+
+function checkDueDates() {
+  state.tasks.forEach(task => {
+    if (isOverdue(task.dueDate)) {
+      const li = document.querySelector(`li[data-id="${task.id}"]`);
+      if (li && !task.completed) li.classList.add('overdue');
+    }
+  });
+}
+
+// Utility Functions
+function updateTaskCount() {
+  elements.taskCount.textContent = `${state.completedTasks} of ${state.totalTasks} tasks completed`;
+}
+
+function resetForm() {
+  elements.taskInput.value = '';
+  elements.categoryInput.value = 'Personal';
+  elements.priorityInput.value = 'Low';
+  elements.dueDateInput.value = '';
+  elements.addTaskBtn.textContent = 'Add Task';
+  elements.taskInput.focus();
+}
+
+function saveTasks() {
+  const tasksToSave = [];
+  elements.taskList.querySelectorAll('li').forEach(li => {
+    const taskId = parseInt(li.getAttribute('data-id'));
+    const existingTask = state.tasks.find(t => t.id === taskId);
+    if (existingTask) {
+      tasksToSave.push({
+        ...existingTask,
+        completed: li.classList.contains('completed')
+      });
+    }
+  });
+  localStorage.setItem('tasks', JSON.stringify(tasksToSave));
+}
+
+function loadTasks() {
+  const savedTasks = JSON.parse(localStorage.getItem('tasks')) || [];
+  state.tasks = savedTasks;
+  state.totalTasks = savedTasks.length;
+  state.completedTasks = savedTasks.filter(t => t.completed).length;
+  
+  elements.taskList.innerHTML = '';
+  savedTasks.forEach(task => addTaskToDOM(task));
+  updateTaskCount();
+}
+
+// Theme Functions
+function toggleTheme() {
+  document.body.classList.toggle('dark');
+  const isDark = document.body.classList.contains('dark');
+  elements.themeToggle.textContent = isDark ? '☀️ Light Mode' : '🌙 Dark Mode';
+  localStorage.setItem('theme', isDark ? 'dark' : 'light');
+}
+
+// Initialize theme
+if (localStorage.getItem('theme') === 'dark') {
+  document.body.classList.add('dark');
+  elements.themeToggle.textContent = '☀️ Light Mode';
+}
+
+// Initialize app
+init();
